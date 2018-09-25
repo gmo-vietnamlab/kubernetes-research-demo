@@ -1,0 +1,53 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  labels:
+    app: frontend
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: "app"
+                operator: In
+                values:
+                  - "develop"
+      volumes:
+      - name: nginx-config
+        persistentVolumeClaim:
+          claimName: nginx-config-pvc
+      - name: share-code
+        persistentVolumeClaim:
+          claimName: code-pvc
+      - name: nginx-log
+        hostPath:
+          path: /log
+      containers:
+      - name: nginx
+        image: {harbor-server-IP}/kube-demo/nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/etc/nginx/conf.d"
+          name: nginx-config
+        - mountPath: "/code"
+          name: share-code
+        - mountPath: "/var/log/nginx/log"
+          name: nginx-log
+      - name: php-fpm
+        image: {harbor-server-IP}/kube-demo/php-fpm
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - mountPath: "/code"
+          name: share-code
+      imagePullSecrets:
+        - name: harbor-secret-registry
